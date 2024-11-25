@@ -116,7 +116,7 @@ with col1:
         unsafe_allow_html=True
     )
 
-    st.image("image.png", caption="Audio Powered RAG",output_format="auto",use_column_width=True)
+    st.image("image.png", caption="Audio Powered RAG",output_format="auto",use_container_width=True)
     
     if st.button("Stop Process"):
         st.session_state.stop = True 
@@ -128,6 +128,7 @@ with col2 :
     st.markdown("<h1 style='text-align: center; color: white;'>FluxReader.ai</h1>", unsafe_allow_html=True)
     st.markdown("<h2 style='text-align: center; color: grey;'>Converse with PDFs using GROQ</h2>", unsafe_allow_html=True)
     st.text("Upload your PDF to chat with it...")
+    st.text("Make sure the name of the file doesnt have blank spaces.")
     uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
 
     persist_directory_path = "chromanew"
@@ -236,5 +237,5 @@ with col2 :
             message(transcription, is_user=True)
             message(response, is_user=False)
         
-        st.title("Audio Playback")
+        st.text("Audio Playback")
         st.audio(aud_file, format='audio/wav', start_time=0)
