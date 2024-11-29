@@ -126,14 +126,13 @@ MIT License. See `LICENSE` for details.
 ---
 
 ### Issues to be handled
-- Rigorous state management in 'session.state'
-- Polish the UI to a bit more modern
+
 - Add pdf reading functionality
-- Change icons in chat dialog box
-- Limit file upload size to 10 mb
 - Align start and stop button
 - Warning to use space free names for pdf
+- Limit file upload size to 10 mb
 - Error handling for audio files
-- Change audio interface 
-- Chat persistence and history
 
+- Polish the UI to a bit more modern
+- Change audio interface 
+- Change icons in chat dialog box
