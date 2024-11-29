@@ -126,7 +126,13 @@ MIT License. See `LICENSE` for details.
 ---
 
 ### Future Enhancements
-1. Rigorous state management in 'session.state'
-2. Enhanced UI for multi-document queries.
-3. Integration with additional LLMs and vector stores.
-4. Support for multiple languages.
+- Rigorous state management in 'session.state'
+- Polish the UI to a bit more modern
+- Change icons in chat dialog box
+- Limit file upload size to 10 mb
+- Align start and stop button
+- Warning to use space free names for pdf
+- Error handling for audio files
+- Change audio interface 
+- Chat persistence and history
+
