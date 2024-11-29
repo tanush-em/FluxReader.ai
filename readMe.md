@@ -125,9 +125,10 @@ MIT License. See `LICENSE` for details.
 
 ---
 
-### Future Enhancements
+### Issues to be handled
 - Rigorous state management in 'session.state'
 - Polish the UI to a bit more modern
+- Add pdf reading functionality
 - Change icons in chat dialog box
 - Limit file upload size to 10 mb
 - Align start and stop button
