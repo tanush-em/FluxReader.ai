@@ -13,6 +13,7 @@ from langchain_chroma import Chroma
 from langchain.schema import Document
 from langchain.chains import RetrievalQA
 import chromadb
+from chromadb.config import Settings
 from gtts import gTTS
 from dotenv import load_dotenv
 import pygame
@@ -55,7 +56,7 @@ def cleanup_session_files():
 atexit.register(cleanup_session_files)
 
 def text_to_audio(text, filename):
-    filepath = os.path.join(AUDIO_DIR, filename)  # e.g., /temp/audio/page_0.mp3
+    filepath = os.path.join(AUDIO_DIR, filename)
     try:
         tts = gTTS(text=text, lang='en', slow=False)
         tts.save(filepath)
@@ -63,7 +64,7 @@ def text_to_audio(text, filename):
     except Exception as e:
         st.error(f"Error generating audio: {e}")
         return None
-
+    
 def cleanup_temp_files(pattern="page_*.mp3"):
     """Clean up temporary audio files"""
     import glob
@@ -204,6 +205,13 @@ def main():
         )
 
         st.image("image.png", caption="Audio Powered RAG", use_container_width=True)
+
+        m = st.markdown(""" <style> 
+                        div.stButton > button:first-child 
+                        { background-color: rgb(204, 49, 49); } 
+                        </style>""", 
+                        unsafe_allow_html=True) 
+        b = st.button("test")
         if st.button("Stop Process"):
             st.session_state.stop = True 
         if hasattr(st.session_state, 'stop') and st.session_state.stop:
@@ -288,7 +296,8 @@ def main():
                     with st.spinner("Transcribing Audio..."):
                         try:
                             groq_client = Groq()
-                            with open("recorded_audio.wav", "rb") as file:
+                            # Use the audio_file variable instead of direct filename
+                            with open(audio_file, "rb") as file:
                                 transcription = groq_client.audio.transcriptions.create(
                                     file=(file.name, file.read()), 
                                     model="distil-whisper-large-v3-en", 
@@ -304,7 +313,7 @@ def main():
                             if transcription_text and vectorstore:
                                 with st.spinner("Generating Response..."):
                                     response = answer_question(transcription_text, vectorstore)
-                                    audio_response = text_to_audio(response)
+                                    audio_response = text_to_audio(response, "response_audio.mp3")
                                     
                                     if 'chat_history' not in st.session_state:
                                         st.session_state.chat_history = []
