@@ -1,3 +1,4 @@
+# Dependancies and Packages
 import streamlit as st
 from time import sleep
 from streamlit_mic_recorder import mic_recorder
@@ -14,32 +15,121 @@ from langchain.chains import RetrievalQA
 import chromadb
 from gtts import gTTS
 from dotenv import load_dotenv
+import pygame
+import shutil
+import atexit
+from pathlib import Path
 
 # Load environment variables
 load_dotenv()
 
+BASE_TEMP_DIR = "temp"
+UPLOAD_DIR = os.path.join(BASE_TEMP_DIR, "uploaded_files")
+AUDIO_DIR = os.path.join(BASE_TEMP_DIR, "audio")
+CHROMADB_DIR = os.path.join(BASE_TEMP_DIR, "chromadb")
+
+os.makedirs(AUDIO_DIR, exist_ok=True)
+
 # Utility Functions
-def newest(path):
-    files = os.listdir(path)
-    paths = [os.path.join(path, basename) for basename in files]
-    return os.path.basename(max(paths, key=os.path.getctime))
 
-def text_to_audio(text):
-    tts = gTTS(text=text, lang='en', slow=False)
-    mp3_file = "temp_audio.mp3"
-    tts.save(mp3_file)
-    return mp3_file
+def ensure_audio_file_exists(filename):
+    """Create an empty audio file if it doesn't exist"""
+    filepath = os.path.join(AUDIO_DIR, filename)
+    Path(filepath).touch(exist_ok=True)
+    return filepath
 
-def save_uploaded_file(uploaded_file, directory):
+def cleanup_session_files():
+    """Cleanup temporary files at session end"""
+    temp_files = [
+        os.path.join(AUDIO_DIR, 'recorded_audio.wav'),
+        os.path.join(AUDIO_DIR, 'temp_audio.mp3')
+    ]
+    for file in temp_files:
+        try:
+            if os.path.exists(file):
+                os.remove(file)
+        except Exception as e:
+            print(f"Error cleaning up {file}: {e}")
+
+# Register cleanup function to run at exit
+atexit.register(cleanup_session_files)
+
+def text_to_audio(text, filename):
+    filepath = os.path.join(AUDIO_DIR, filename)  # e.g., /temp/audio/page_0.mp3
     try:
-        os.makedirs(directory, exist_ok=True)
-        with open(os.path.join(directory, uploaded_file.name), "wb") as f:
-            f.write(uploaded_file.getbuffer())
-        return st.success(f"Saved file: {uploaded_file.name} to {directory}")
+        tts = gTTS(text=text, lang='en', slow=False)
+        tts.save(filepath)
+        return filepath
     except Exception as e:
-        return st.error(f"Error saving file: {e}")
+        st.error(f"Error generating audio: {e}")
+        return None
 
-# PDF Extraction Function with Multi-Column Support
+def cleanup_temp_files(pattern="page_*.mp3"):
+    """Clean up temporary audio files"""
+    import glob
+    for file in glob.glob(os.path.join(AUDIO_DIR, pattern)):
+        os.remove(file)
+
+def voice_read_pdf(pages, start_page=0):
+    """Voice read PDF pages with play/pause/resume functionality"""
+    # Initialize pygame mixer if not already initialized
+    if not pygame.mixer.get_init():
+        pygame.mixer.init()
+
+    # Initialize reading state if not exists
+    if 'reading_state' not in st.session_state:
+        st.session_state.reading_state = {
+            'current_page': start_page,
+            'is_playing': False,
+            'audio_files': []
+        }
+
+    # Prepare audio files for pages if not already done
+    if not st.session_state.reading_state['audio_files']:
+        cleanup_temp_files()  # Clean any previous temp files
+        for idx, page in enumerate(pages[start_page:], start=start_page):
+            audio_file = text_to_audio(page, f"page_{idx}.mp3")
+            st.session_state.reading_state['audio_files'].append(audio_file)
+
+    # Get current page from reading state
+    current_page = st.session_state.reading_state['current_page']
+    
+    # Display current page content
+    st.text_area("Current Page Content", pages[current_page], height=300)
+
+    # Audio control columns
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        if st.button("Previous Page") and current_page > 0:
+            pygame.mixer.music.stop()
+            st.session_state.reading_state['current_page'] -= 1
+            st.rerun()
+
+    with col2:
+        if st.button("Next Page") and current_page < len(pages) - 1:
+            pygame.mixer.music.stop()
+            st.session_state.reading_state['current_page'] += 1
+            st.rerun()
+
+    with col3:
+        if st.button("Play"):
+            if not st.session_state.reading_state['is_playing']:
+                pygame.mixer.music.load(st.session_state.reading_state['audio_files'][current_page])
+                pygame.mixer.music.play()
+                st.session_state.reading_state['is_playing'] = True
+
+    with col4:
+        if st.button("Pause/Resume"):
+            if st.session_state.reading_state['is_playing']:
+                pygame.mixer.music.pause()
+                st.session_state.reading_state['is_playing'] = False
+            else:
+                pygame.mixer.music.unpause()
+                st.session_state.reading_state['is_playing'] = True
+
+    st.write(f"Page {current_page + 1} of {len(pages)}")
+
 def extract_pdf_text(pdf_path, footer_margin=50, header_margin=50):
     doc = fitz.open(pdf_path)
     full_text = ""
@@ -60,49 +150,19 @@ def extract_pdf_text(pdf_path, footer_margin=50, header_margin=50):
     
     return full_text
 
-# PDF Reading and Tracking Functions
-def track_pdf_reading(pages, current_page=0):
-    st.session_state.current_page = current_page
-    st.session_state.total_pages = len(pages)
-    
-    page_content = pages[current_page]
-    st.text_area("Current Page Content", page_content, height=300)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Previous Page") and st.session_state.current_page > 0:
-            st.session_state.current_page -= 1
-            track_pdf_reading(pages, st.session_state.current_page)
-    
-    with col2:
-        if st.button("Next Page") and st.session_state.current_page < st.session_state.total_pages - 1:
-            st.session_state.current_page += 1
-            track_pdf_reading(pages, st.session_state.current_page)
-    
-    st.write(f"Page {st.session_state.current_page + 1} of {st.session_state.total_pages}")
+def save_uploaded_file(uploaded_file, directory):
+    try:
+        os.makedirs(directory, exist_ok=True)
+        with open(os.path.join(directory, uploaded_file.name), "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        return st.success(f"Saved file: {uploaded_file.name} to {directory}")
+    except Exception as e:
+        return st.error(f"Error saving file: {e}")
 
-def pdf_reader_with_pause(pages):
-    if 'reading_paused' not in st.session_state:
-        st.session_state.reading_paused = False
-    
-    if not st.session_state.reading_paused:
-        track_pdf_reading(pages)
-    
-    pause_col, resume_col = st.columns(2)
-    with pause_col:
-        if st.button("Pause Reading"):
-            st.session_state.reading_paused = True
-            st.write("Reading paused. Use resume to continue.")
-    
-    with resume_col:
-        if st.button("Resume Reading"):
-            st.session_state.reading_paused = False
-            track_pdf_reading(pages, st.session_state.current_page)
-
-# LLM and Embedding Configuration
+# LLM Configuration and other existing functions remain the same
 llm = ChatGroq(
     model_name="llama3-70b-8192",
-    temperature=0.3,
+    temperature=0.5,
     max_tokens=1000,
 )
 
@@ -111,13 +171,6 @@ embeddings = HuggingFaceBgeEmbeddings(
     model_kwargs={"device":"cpu"},
     encode_kwargs={"normalize_embeddings":False}
 )
-
-def text_splitter():
-    return RecursiveCharacterTextSplitter(
-        chunk_size=512,
-        chunk_overlap=20,
-        length_function=len,
-    )
 
 def answer_question(question, vectorstore):
     retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
@@ -130,24 +183,6 @@ def answer_question(question, vectorstore):
     result = qa.invoke({"query": question})
     return result['result']
 
-groq_client = Groq()
-
-def transcribe_audio(filename):
-    try:
-        with open(filename, "rb") as file:
-            transcription = groq_client.audio.transcriptions.create(
-                file=(filename, file.read()), 
-                model="distil-whisper-large-v3-en", 
-                prompt="Specify context or spelling",  
-                response_format="json",  
-                language="en", 
-                temperature=0.0  
-            )
-            return transcription.text
-    except Exception as e:
-        st.error(f"Transcription error: {e}")
-        return ""
-
 # Streamlit App Configuration
 st.set_page_config(
     page_title="FluxReader.ai",
@@ -155,112 +190,137 @@ st.set_page_config(
     layout="wide"
 )
 
-# Main App Layout
-col1, col2 = st.columns([1,2])  
+def main():
+    # Main App Layout
+    col1, col2 = st.columns([1,2])  
 
-with col1:
-    st.markdown(
-        """
-        <h1 style='text-align: center;'>🎧 Talk with your PDFs 📚</h1>
-        <h5 style='text-align: center;'>VoiceIO RAG based QA system</h5>
-        """,
-        unsafe_allow_html=True
-    )
-
-    st.image("image.png", caption="Audio Powered RAG", width=400)
-    if st.button("Stop Process"):
-        st.session_state.stop = True 
-    if hasattr(st.session_state, 'stop') and st.session_state.stop:
-        st.write("The process has been stopped. You can refresh the page to restart.")
-
-with col2:
-    st.markdown("<h1 style='text-align: center; color: white;'>FluxReader.ai</h1>", unsafe_allow_html=True)
-    st.markdown("<h2 style='text-align: center; color: grey;'>Converse with PDFs using GROQ</h2>", unsafe_allow_html=True)
-    
-    upload_dir = "uploaded_files"
-    os.makedirs(upload_dir, exist_ok=True)
-    
-    uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
-
-    # Modify this part of the PDF processing code
-    if uploaded_file is not None:
-        # Save uploaded file
-        save_uploaded_file(uploaded_file, upload_dir)
-        file_name = uploaded_file.name
-        file_path = f"uploaded_files/{file_name}"
-        
-        # Extract text using PyMuPDF
-        full_text = extract_pdf_text(file_path)
-        
-        # Split text into pages
-        text_splitter_func = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=100,
-            length_function=len,
+    with col1:
+        st.markdown(
+            """
+            <h1 style='text-align: center;'>🎧 Talk with your PDFs 📚</h1>
+            <h5 style='text-align: center;'>VoiceIO RAG based QA system</h5>
+            """,
+            unsafe_allow_html=True
         )
-        pages = text_splitter_func.split_text(full_text)
+
+        st.image("image.png", caption="Audio Powered RAG", use_container_width=True)
+        if st.button("Stop Process"):
+            st.session_state.stop = True 
+        if hasattr(st.session_state, 'stop') and st.session_state.stop:
+            st.write("The process has been stopped. You can refresh the page to restart.")
+
+    with col2:
+        st.markdown("<h1 style='text-align: center; color: white;'>FluxReader.ai</h1>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; color: grey;'>Converse with PDFs using GROQ</h2>", unsafe_allow_html=True)
         
-        # Convert pages to Document objects
-        documents = [Document(page_content=page, metadata={"source": file_name}) for page in pages]
+        upload_dir = "uploaded_files"
+        os.makedirs(upload_dir, exist_ok=True)
         
-        # Create unique persist directory
-        persist_directory = f"chroma_storage_{file_name.split('.')[0]}"
-        
-        try:
-            # Initialize ChromaDB Client
-            client = chromadb.PersistentClient(path=persist_directory)
+        uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
+
+        if uploaded_file is not None:
+            # Save uploaded file
+            save_uploaded_file(uploaded_file, UPLOAD_DIR)
+            file_name = uploaded_file.name
+            file_path = os.path.join(UPLOAD_DIR, file_name)
             
-            # Create or load vectorstore
-            vectorstore = Chroma(
-                embedding_function=embeddings,
-                persist_directory=persist_directory,
-                collection_name=file_name.split(".")[0]
+            # Extract text using PyMuPDF
+            full_text = extract_pdf_text(file_path)
+            
+            # Split text into pages
+            text_splitter_func = RecursiveCharacterTextSplitter(
+                chunk_size=1000,
+                chunk_overlap=100,
+                length_function=len,
             )
+            pages = text_splitter_func.split_text(full_text)
             
-            # Add documents if vectorstore is empty
-            if len(vectorstore.get()['documents']) == 0:
-                vectorstore.add_documents(documents)  # Pass Document objects here
-                st.success(f"Loaded {len(pages)} pages into vectorstore")
-        
-        except Exception as e:
-            st.error(f"Error setting up vectorstore: {e}")
-            vectorstore = None
-
-
-        if vectorstore and st.session_state.get("start_process"):
-            st.header("PDF Reader")
-            pdf_reader_with_pause(pages)
-        
-        st.title("Audio Recorder - Ask Question")
-        audio = mic_recorder(
-            start_prompt="Start recording",
-            stop_prompt="Stop recording",
-            just_once=False,
-            key='recorder'
-        )
-
-        if audio:
-            st.audio(audio['bytes'], format='audio/wav')
-            with open("recorded_audio.wav", "wb") as f:
-                f.write(audio['bytes'])
+            # Convert pages to Document objects
+            documents = [Document(page_content=page, metadata={"source": file_name}) for page in pages]
             
-            with st.spinner("Transcribing Audio..."):
-                transcription = transcribe_audio("recorded_audio.wav")
-                st.write("Transcription:", transcription)
+            # Create unique persist directory
+            persist_directory = os.path.join(CHROMADB_DIR, f"storage_{file_name.split('.')[0]}")
+            
+            try:
+                # Initialize ChromaDB Client
+                client = chromadb.PersistentClient(
+                    path=persist_directory,
+                    settings=Settings(
+                        anonymized_telemetry=False,
+                        is_persistent=True
+                    )
+                )
+                
+                # Create or load vectorstore
+                vectorstore = Chroma(
+                    client=client,  
+                    embedding_function=embeddings,
+                    collection_name=file_name.split(".")[0]
+                )
+                
+                # Add documents if vectorstore is empty
+                if len(vectorstore.get()['documents']) == 0:
+                    vectorstore.add_documents(documents)
+                    st.success(f"Loaded {len(pages)} pages into vectorstore")
+            
+            except Exception as e:
+                st.error(f"Error setting up vectorstore: {e}")
+                vectorstore = None
 
-            if transcription and vectorstore:
-                with st.spinner("Generating Response..."):
-                    response = answer_question(transcription, vectorstore)
-                    audio_response = text_to_audio(response)
-                    
-                    if 'chat_history' not in st.session_state:
-                        st.session_state.chat_history = []
-                    
-                    st.session_state.chat_history.append({
-                        "question": transcription, 
-                        "response": response
-                    })
-                    
-                    message(transcription, is_user=True)
-                    message(response, is_user=False)
-                    st.audio(audio_response, format='audio/mp3')
+            st.header("PDF Voice Reader")
+            voice_read_pdf(pages)
+            
+            st.title("Audio Recorder - Ask Question")
+            audio = mic_recorder(
+                start_prompt="Start recording",
+                stop_prompt="Stop recording",
+                just_once=False,
+                key='recorder'
+            )
+
+            if audio:
+                try:
+                    audio_file = ensure_audio_file_exists("recorded_audio.wav")
+                    with open(audio_file, "wb") as f:
+                        f.write(audio['bytes'])
+                    st.audio(audio['bytes'], format='audio/wav')
+                
+                    with st.spinner("Transcribing Audio..."):
+                        try:
+                            groq_client = Groq()
+                            with open("recorded_audio.wav", "rb") as file:
+                                transcription = groq_client.audio.transcriptions.create(
+                                    file=(file.name, file.read()), 
+                                    model="distil-whisper-large-v3-en", 
+                                    prompt="Specify context or spelling",  
+                                    response_format="json",  
+                                    language="en", 
+                                    temperature=0.0  
+                                )
+                                transcription_text = transcription.text
+                            
+                            st.write("Transcription:", transcription_text)
+
+                            if transcription_text and vectorstore:
+                                with st.spinner("Generating Response..."):
+                                    response = answer_question(transcription_text, vectorstore)
+                                    audio_response = text_to_audio(response)
+                                    
+                                    if 'chat_history' not in st.session_state:
+                                        st.session_state.chat_history = []
+                                    
+                                    st.session_state.chat_history.append({
+                                        "question": transcription_text, 
+                                        "response": response
+                                    })
+                                    
+                                    message(transcription_text, is_user=True)
+                                    message(response, is_user=False)
+                                    st.audio(audio_response, format='audio/mp3')
+                        except Exception as e:
+                            st.error(f"Transcription Error: {e}")
+                except Exception as e:
+                            st.error(f"Error processing audio: {e}")
+
+if __name__ == "__main__":
+    main()

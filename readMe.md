@@ -129,6 +129,7 @@ MIT License. See `LICENSE` for details.
 
 - Add pdf reading functionality
 - Align start and stop button
+
 - Warning to use space free names for pdf
 - Limit file upload size to 10 mb
 - Error handling for audio files
