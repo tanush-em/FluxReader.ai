@@ -35,8 +35,6 @@ FluxReader.ai is an AI-powered application that lets you interact with PDF docum
 
 ### Prerequisites
 - Python 3.8 or higher
-- pip (Python package manager)
-- Virtual environment (optional but recommended)
 
 ### Steps
 
@@ -57,9 +55,16 @@ FluxReader.ai is an AI-powered application that lets you interact with PDF docum
    # .env file
    GROQ_API_KEY=<your_groq_api_key>
    ```
+   You can get yours for free [here](https://console.groq.com/keys)
 
-4. Run the batch file to setup the project locally:
+4. Run the scripts to setup the project locally:
+
+   Windows:
    - Right click on the `run_app.bat` file and `Run as Administrator`.
+
+   Linux:
+   - Make the script executable: `chmod +x run_app.sh`
+   - Run the script: `./run_app.sh`
 
 ---
 
