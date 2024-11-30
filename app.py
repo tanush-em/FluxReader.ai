@@ -20,13 +20,13 @@ from pathlib import Path
 
 # Import utility functions
 from utils import (
-    ensure_audio_file_exists,
     cleanup_session_files,
+    ensure_audio_file_exists,
     text_to_audio,
-    cleanup_temp_files,
     voice_read_pdf,
     extract_pdf_text,
-    save_uploaded_file
+    save_uploaded_file,
+    cleanup_temp_directories
 )
 
 # Load environment variables from .env file
@@ -89,7 +89,7 @@ def main():
             unsafe_allow_html=True
         )
 
-        st.image("image.png", caption="Audio Powered RAG", use_container_width=True)
+        st.image("assets/image.png", caption="Audio Powered RAG", use_container_width=True)
 
         # Add custom button styling
         st.markdown("""
@@ -106,6 +106,7 @@ def main():
                 }
                 .stButton > button:hover {
                     background-color: rgb(235, 35, 16);
+                    color: black;
                     transform: scale(1.05);
                 }
                 div[data-testid="stButton"] {
@@ -117,7 +118,14 @@ def main():
 
         # Stop process button
         if st.button("Stop Process"):
-            st.session_state.stop = True 
+            # Set session state to stop
+            st.session_state.stop = True
+            
+            # Clean up temporary directories
+            cleanup_temp_directories([UPLOAD_DIR, AUDIO_DIR, CHROMADB_DIR])
+            
+            st.success("Temporary files have been deleted. Refresh to restart.")
+
         if st.session_state.get('stop', False):
             st.write("The process has been stopped. Refresh to restart.")
 

@@ -6,12 +6,22 @@ from pathlib import Path
 import glob
 import fitz
 import atexit
-
+import shutil
 # Ensure the specified audio file exists or create an empty one
 def ensure_audio_file_exists(AUDIO_DIR, filename):
     filepath = os.path.join(AUDIO_DIR, filename)
     Path(filepath).touch(exist_ok=True)  # Creates the file if it doesn't exist
     return filepath
+
+# Function to clean up directories
+def cleanup_temp_directories(directories):
+    try:
+        for directory in directories:
+            if os.path.exists(directory):
+                shutil.rmtree(directory)  # Recursively delete all files and subdirectories
+                os.makedirs(directory, exist_ok=True)  # Recreate the empty directory
+    except Exception as e:
+        st.error(f"Error cleaning up directories: {e}")
 
 # Clean up temporary files when the session ends
 def cleanup_session_files(AUDIO_DIR):

@@ -1,126 +1,108 @@
-## README: **FluxReader.ai**  
 
-### Introduction
-**FluxReader.ai** is an advanced RAG (Retrieval-Augmented Generation) QA system that lets users upload PDFs and ask questions about their content using voice input. The system combines **GROQ AI**, **ChromaDB**, and **LangChain** to transcribe audio, retrieve relevant information, and provide text and audio-based responses.
+# FluxReader.ai
+
+FluxReader.ai is an AI-powered application that lets you interact with PDF documents using voice and text. With advanced features like RAG-based QA, PDF voice reading, and audio transcription, FluxReader.ai transforms how you engage with documents.
+
+---
+
+## Features
+
+1. **PDF Upload and Processing**:
+   - Extracts text from PDF files, even with large documents.
+   - Supports header and footer margin filtering to improve text extraction accuracy.
+
+2. **Vector Search**:
+   - Splits PDF content into chunks and stores them in a vectorstore for efficient retrieval.
+   - Uses embeddings for semantic search to retrieve the most relevant answers to user queries.
+
+3. **RAG-based QA System**:
+   - Retrieves answers from the PDF content using a **Retrieval-Augmented Generation (RAG)** pipeline.
+   - Powered by the Groq LLM and HuggingFace embeddings.
+
+4. **Voice Interaction**:
+   - Converts text to speech for reading PDFs aloud.
+   - Records and transcribes user queries through an integrated microphone.
+   - Generates and plays responses to queries.
+
+5. **Streamlit-based Web Interface**:
+   - A user-friendly dashboard for uploading, processing, and interacting with PDF files.
+   - Sidebar for easy navigation and settings.
+   - Chat-like interface to display user questions and AI responses.
 
 ---
 
-### Features
-1. **PDF Chat**:
-   - Upload PDFs and interact with them conversationally.
-   - Utilizes GROQ AI and vector databases for efficient document retrieval.
-
-2. **Voice Interaction**:
-   - Record questions using your microphone.
-   - Automatic transcription and response synthesis using text-to-speech.
-
-3. **Persistence**:
-   - Retains previously processed documents in a persistent ChromaDB store.
-
-4. **Interactive UI**:
-   - User-friendly interface with **Streamlit**.
-
----
+## Installation
 
 ### Prerequisites
-- **Python**: Version 3.8 or higher.
-- **Libraries**:
-  - `streamlit`
-  - `streamlit-mic-recorder`
-  - `streamlit-chat`
-  - `langchain`
-  - `chromadb`
-  - `pydub`
-  - `gTTS`
-  - `dotenv`
-  - `PyPDFLoader`
-  - `HuggingFaceBgeEmbeddings`
+- Python 3.8 or higher
+- pip (Python package manager)
+- Virtual environment (optional but recommended)
 
----
+### Steps
 
-### Installation
-Follow these steps to set up the project locally:
+1. Install python:
+   Install Python if you dont have already. Python version >3.8 works fine.
+   [Click Here](https://www.python.org/ftp/python/3.10.10/python-3.10.10-amd64.exe) to install it.
+   Make sure you check the "add to PATH" checkbox during installation.
 
-#### Step 1: Clone the Repository
-```bash
-git clone https://github.com/your-repo/fluxreader-ai.git
-cd fluxreader-ai
-```
-
-#### Step 2: Create a Virtual Environment
-```bash
-python -m venv env
-source env/bin/activate   # On Windows, use `env\Scripts\activate`
-```
-
-#### Step 3: Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-#### Step 4: Set Up Environment Variables
-1. Create a `.env` file in the root directory.
-2. Add the following keys:
-   ```
-   GROQ_API_KEY=<Your_GROQ_API_Key>
-   ```
-
----
-
-### Usage
-1. **Start the Application**
+2. Clone the repository:
+   You can either use git CLI or by downloading the zip package of the repo.
    ```bash
-   streamlit run app.py
+   git clone https://github.com/yourusername/fluxreader-ai.git
+   cd fluxreader-ai
    ```
-   - The app will be accessible at `http://localhost:8501`.
 
-2. **Upload PDF**:
-   - Select and upload a PDF file.
-   - Ensure the filename has no spaces.
+3. Create a `.env` file to configure environment variables:
+   ```env
+   # .env file
+   GROQ_API_KEY=<your_groq_api_key>
+   ```
 
-3. **Record Audio**:
-   - Use the microphone recorder to ask questions about the uploaded PDF.
-
-4. **View and Hear Responses**:
-   - See the transcribed question and text-based response.
-   - Listen to the audio synthesis of the response.
+4. Run the batch file to setup the project locally:
+   - Right click on the `run_app.bat` file and `Run as Administrator`.
 
 ---
 
-### Folder Structure
+## Usage
+
+### Upload a PDF
+1. Upload a PDF file through the provided file uploader.
+2. Extracted text will be displayed, and the document will be processed into chunks.
+
+### Voice-Read PDF
+- Navigate between pages using "Previous" and "Next" buttons.
+- Play or pause audio playback for each page's text.
+
+### Ask Questions
+1. Record a question using the **Audio Recorder** or type it in.
+2. The AI will transcribe your question and provide an answer from the PDF content.
+
+---
+
+## File Structure
+
 ```
-fluxreader-ai/
-│
-├── app.py                  # Main Streamlit app script
-├── requirements.txt        # List of dependencies
-├── uploaded_files/         # Folder for uploaded PDFs
-├── chromanew/              # Persistent vector database directory
-├── image.png               # UI banner image
-├── .env                    # Environment variables
-└── README.md               # Documentation
+.
+├── app.py               # Main Streamlit app
+├── utils.py             # Utility functions
+├── requirements.txt     # Dependencies
+├── .env.example         # Environment variable example
+├── temp/                # Temporary directory for audio, uploads, and vectorstore
+└── README.md            # Project documentation
 ```
 
 ---
 
-### Key Functions
-- **`save_uploaded_file`**: Saves uploaded PDFs to a directory.
-- **`text_splitter`**: Splits PDF content into manageable chunks.
-- **`text_to_audio`**: Converts text responses to audio using `gTTS`.
-- **`transcribe_audio`**: Transcribes recorded audio using GROQ.
+## Dependencies
+
+- **langchain**: Language model orchestration
+- **chromadb**: Vectorstore for embeddings
+- **Groq**: LLM and transcription services
+- **PyMuPDF**: PDF text extraction
+- **Streamlit**: Web application framework
+- **gTTS**: Google Text-to-Speech
+- **pygame**: Audio playback
 
 ---
 
-### Troubleshooting
-1. **Common Errors**:
-   - *FileNotFoundError*: Ensure the `uploaded_files/` directory exists.
-   - *API Error*: Verify your GROQ API key in the `.env` file.
-
-2. **Check Logs**:
-   - Streamlit logs can provide detailed error messages.
-
----
-
-### License
-MIT License. See `LICENSE` for details.
-
----
+For any questions or issues, feel free to contact or submit an issue on GitHub.
