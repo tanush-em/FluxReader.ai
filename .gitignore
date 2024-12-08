@@ -2,5 +2,5 @@ temp_audio.mp3
 /env
 __pycache__
 .env
-app.py
+./app.py
 .vscode
